@@ -33,7 +33,7 @@ export class SECHttpClient {
   }
 
   requestJson<T>(url: string, options: SECRequestOptions = {}): Effect.Effect<T, SECRequestError> {
-    return this.request(url, options, async (response) => (await response.json()) as T);
+    return this.request(url, options, (response) => response.json());
   }
 
   requestText(url: string, options: SECRequestOptions = {}): Effect.Effect<string, SECRequestError> {

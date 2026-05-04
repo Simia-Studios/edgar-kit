@@ -180,6 +180,12 @@ CIK|Company Name|Form Type|Date Filed|Filename
 });
 
 describe("SECClient HTTP integration", () => {
+  it("requires callers to identify their own User-Agent", () => {
+    expect(() => new SECClient({ userAgent: "" })).toThrow(
+      "SECClient requires a User-Agent that identifies your application and contact email.",
+    );
+  });
+
   it("runs Effect requests with configured SEC headers", async () => {
     const headersSeen: string[] = [];
     const fetchMock: typeof fetch = async (_input, init) => {
@@ -209,6 +215,8 @@ describe("SECClient HTTP integration", () => {
       fetch: fetchMock,
       maxRequestsPerSecond: 10,
     });
+
+    expect(client.http.fetch).toBe(fetchMock);
 
     await expect(client.run(client.tickers.companies())).resolves.toEqual([
       {

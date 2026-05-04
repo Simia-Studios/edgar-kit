@@ -66,12 +66,16 @@ export const formatCompactSECDate = (date: DateInput): string => {
   return formatSECDate(date).replaceAll("-", "");
 };
 
+const isReadonlyArray = <T>(value: T | readonly T[]): value is readonly T[] => {
+  return Array.isArray(value);
+};
+
 export const normalizeList = <T>(value: T | readonly T[] | undefined): T[] => {
   if (value === undefined) {
     return [];
   }
 
-  return Array.isArray(value) ? [...(value as readonly T[])] : [value as T];
+  return isReadonlyArray(value) ? [...value] : [value];
 };
 
 export const joinCommaList = (

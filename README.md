@@ -166,4 +166,13 @@ All direct package versions are exact. `.npmrc` sets `save-exact=true` for futur
 pnpm install
 pnpm test
 pnpm build
+pnpm check
+```
+
+Publish with an explicit semver bump:
+
+```sh
+./publish.sh patch
+./publish.sh minor
+./publish.sh major
 ```
