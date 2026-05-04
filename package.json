@@ -4,6 +4,9 @@
   "private": false,
   "description": "Type-safe SDK for SEC EDGAR filings, submissions, search, archives, XBRL, financials, and company data.",
   "license": "ISC",
+  "bin": {
+    "edgar-kit": "./dist/cli.mjs"
+  },
   "files": [
     "dist/**",
     "README.md"
@@ -13,6 +16,10 @@
     ".": {
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.mts",
+      "default": "./dist/cli.mjs"
     }
   },
   "publishConfig": {
@@ -26,10 +33,13 @@
     "build:clean": "tsc --noEmit && tsdown --clean",
     "release": "./publish.sh",
     "format": "oxfmt .",
-    "check": "oxfmt --check . && pnpm typecheck && pnpm test && pnpm build",
+    "verify:cli": "node scripts/verify-cli-help.mjs",
+    "check": "oxfmt --check . && pnpm typecheck && pnpm test && pnpm build && pnpm verify:cli",
     "prepare": "lefthook install"
   },
   "dependencies": {
+    "@effect/cli": "0.75.1",
+    "@effect/platform-node": "0.106.0",
     "effect": "3.21.2"
   },
   "devDependencies": {

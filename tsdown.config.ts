@@ -6,6 +6,7 @@ export default defineConfig({
   dts: true,
   clean: true,
   entry: {
+    cli: "src/cli.ts",
     index: "src/index.ts",
   },
 });

@@ -24,6 +24,40 @@ The SEC asks automated clients to download only what they need, use efficient sc
 pnpm add edgar-kit
 ```
 
+## CLI
+
+The package publishes an `edgar-kit` binary and an `edgar-kit/cli` entrypoint. The CLI is intentionally focused on company-performance workflows: company lookup, filing discovery, normalized financials, and optional share-price provider data. Low-level SEC endpoint helpers remain available in the SDK.
+
+Use `edgar-kit --help` to list every command. Each command group and leaf command also supports `--help`, for example `edgar-kit financials --help` and `edgar-kit financials statement --help`.
+
+Provide a SEC-compliant User-Agent with `--user-agent` or `EDGAR_KIT_USER_AGENT`:
+
+```sh
+edgar-kit companies by-ticker --ticker AAPL --user-agent "Acme Corp data@example.com"
+
+edgar-kit filings list \
+  --ticker AAPL \
+  --form 10-K \
+  --limit 5 \
+  --user-agent "Acme Corp data@example.com"
+
+edgar-kit filings search \
+  --ticker MSFT \
+  --query "artificial intelligence" \
+  --form 10-K \
+  --start-date 2025-01-01 \
+  --user-agent "Acme Corp data@example.com"
+
+edgar-kit financials statement \
+  --ticker AAPL \
+  --statement income \
+  --frequency annual \
+  --limit 5 \
+  --user-agent "Acme Corp data@example.com"
+```
+
+Share-price SDK methods require an injected market-data provider. In the CLI, set `--share-price-provider-command` or `EDGAR_KIT_SHARE_PRICE_PROVIDER_COMMAND`; the command receives resolved provider input as JSON on stdin and must print a JSON array of normalized OHLCV bars.
+
 ## Quick Start
 
 ```ts
