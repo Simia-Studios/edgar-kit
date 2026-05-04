@@ -1,6 +1,14 @@
 export { SECClient } from "./client";
 export type { SECClientOptions } from "./client";
 
+export { ArchivesClient } from "./resources/archives";
+export { CompaniesClient } from "./resources/companies";
+export { IndexesClient } from "./resources/indexes";
+export { SearchClient } from "./resources/search";
+export { SubmissionsClient } from "./resources/submissions";
+export { TickersClient } from "./resources/tickers";
+export { XBRLClient } from "./resources/xbrl";
+
 export { SECInputError, SECRequestError, isSECClientError } from "./errors";
 export type { SECClientError } from "./errors";
 

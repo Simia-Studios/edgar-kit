@@ -49,7 +49,9 @@ export class IndexesClient {
 }
 
 export const parseMasterIndex = (text: string): SECIndexRecord[] => {
-  const separatorIndex = text.indexOf("--------------------------------------------------------------------------------");
+  const separatorIndex = text.indexOf(
+    "--------------------------------------------------------------------------------",
+  );
 
   if (separatorIndex === -1) {
     return [];

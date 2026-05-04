@@ -1,0 +1,7 @@
+pre-commit:
+  commands:
+    format-changed:
+      run: git diff --name-only --cached --diff-filter=ACMR -z -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.mjs' '*.cjs' '*.mts' '*.cts' '*.json' '*.md' '*.mdx' '*.yml' '*.yaml' '*.css' '*.scss' '*.html' | xargs -0 --no-run-if-empty ./node_modules/.bin/oxfmt
+      skip:
+        - pnpm-lock.yaml
+      stage_fixed: true

@@ -36,11 +36,20 @@ export class ArchivesClient {
     });
   }
 
+  filingIndex(input: FilingUrlInput): Effect.Effect<string, SECClientError> {
+    return this.http.requestText(this.filingIndexUrl(input));
+  }
+
+  filingHeaders(input: FilingUrlInput): Effect.Effect<string, SECClientError> {
+    return this.http.requestText(this.filingHeadersUrl(input));
+  }
+
   filingHeader(input: FilingUrlInput): Effect.Effect<string, SECClientError> {
-    return this.filingDocument({
-      ...input,
-      fileName: `${input.accessionNumber}.hdr.sgml`,
-    });
+    return this.filingHeaders(input);
+  }
+
+  xbrlZip(input: FilingUrlInput): Effect.Effect<ArrayBuffer, SECClientError> {
+    return this.http.requestArrayBuffer(this.xbrlZipUrl(input));
   }
 
   filingDirectoryUrl(input: FilingUrlInput): string {
@@ -52,7 +61,10 @@ export class ArchivesClient {
   }
 
   filingHeadersUrl(input: FilingUrlInput): string {
-    return createUrl(this.baseUrls.sec, `${this.filingDirectoryPath(input)}/${input.accessionNumber}-index-headers.html`);
+    return createUrl(
+      this.baseUrls.sec,
+      `${this.filingDirectoryPath(input)}/${input.accessionNumber}-index-headers.html`,
+    );
   }
 
   filingDocumentUrl(input: FilingDocumentUrlInput): string {

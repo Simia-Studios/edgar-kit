@@ -71,11 +71,15 @@ export const normalizeList = <T>(value: T | readonly T[] | undefined): T[] => {
     return [];
   }
 
-  return Array.isArray(value) ? [...value] : [value];
+  return Array.isArray(value) ? [...(value as readonly T[])] : [value as T];
 };
 
-export const joinCommaList = (value: string | number | readonly (string | number)[] | undefined): string | undefined => {
-  const list = normalizeList(value).map((item) => String(item).trim()).filter(Boolean);
+export const joinCommaList = (
+  value: string | number | readonly (string | number)[] | undefined,
+): string | undefined => {
+  const list = normalizeList(value)
+    .map((item) => String(item).trim())
+    .filter(Boolean);
 
   return list.length > 0 ? list.join(",") : undefined;
 };

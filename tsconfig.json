@@ -11,7 +11,7 @@
     "moduleResolution": "Bundler",
     "module": "ESNext",
     "noEmit": true,
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
   "include": ["src/**/*", "tests/**/*", "package.json", "tsdown.config.ts", "vitest.config.ts"]

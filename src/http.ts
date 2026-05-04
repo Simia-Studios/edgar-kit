@@ -1,9 +1,9 @@
 import { Effect } from "effect";
-import { SECRequestError, isSECClientError } from "./errors";
+import { SECRequestError } from "./errors";
 
 export interface SECHttpClientOptions {
-  userAgent?: string;
-  fetch?: typeof fetch;
+  userAgent: string;
+  fetch?: typeof globalThis.fetch;
   maxRequestsPerSecond?: number;
   headers?: HeadersInit;
 }
@@ -14,16 +14,20 @@ export interface SECRequestOptions extends RequestInit {
 
 export class SECHttpClient {
   readonly userAgent: string;
+  readonly fetch: typeof globalThis.fetch;
 
-  private readonly fetchImpl: typeof fetch;
   private readonly headers: HeadersInit;
   private readonly requestIntervalMs: number;
   private rateLimitQueue: Promise<void> = Promise.resolve();
   private lastRequestAt = 0;
 
-  constructor(options: SECHttpClientOptions = {}) {
-    this.userAgent = options.userAgent ?? "sec-sdk npm package contact@example.com";
-    this.fetchImpl = options.fetch ?? fetch;
+  constructor(options: SECHttpClientOptions) {
+    if (!options.userAgent.trim()) {
+      throw new TypeError("SECClient requires a User-Agent that identifies your application and contact email.");
+    }
+
+    this.userAgent = options.userAgent;
+    this.fetch = options.fetch ?? globalThis.fetch;
     this.headers = options.headers ?? {};
     this.requestIntervalMs = 1_000 / Math.max(1, options.maxRequestsPerSecond ?? 10);
   }
@@ -51,7 +55,7 @@ export class SECHttpClient {
       try: async () => {
         await this.acquireRequestSlot();
 
-        const response = await this.fetchImpl(url, {
+        const response = await this.fetch(url, {
           ...options,
           headers: this.createHeaders(options.headers),
         });
@@ -70,7 +74,7 @@ export class SECHttpClient {
         return read(response);
       },
       catch: (cause) => {
-        if (isSECClientError(cause)) {
+        if (cause instanceof SECRequestError) {
           return cause;
         }
 

@@ -27,7 +27,7 @@ export class SECClient {
   readonly tickers: TickersClient;
   readonly xbrl: XBRLClient;
 
-  constructor(options: SECClientOptions = {}) {
+  constructor(options: SECClientOptions) {
     this.baseUrls = {
       ...DEFAULT_SEC_BASE_URLS,
       ...options.baseUrls,

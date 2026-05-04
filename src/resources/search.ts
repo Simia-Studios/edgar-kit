@@ -31,7 +31,9 @@ export class SearchClient {
   }
 
   filingResults(input: SearchFilingsInput): Effect.Effect<SECSearchFiling[], SECClientError> {
-    return Effect.map(this.filings(input), (response) => response.hits.hits.map((hit) => searchHitToFiling(hit, this.baseUrls.sec)));
+    return Effect.map(this.filings(input), (response) =>
+      response.hits.hits.map((hit) => searchHitToFiling(hit, this.baseUrls.sec)),
+    );
   }
 
   filingsSearchUrl(input: SearchFilingsInput): string {
@@ -61,7 +63,8 @@ export class SearchClient {
 export const searchHitToFiling = (hit: SECSearchHit, secBaseUrl = "https://www.sec.gov"): SECSearchFiling => {
   const source = hit._source;
   const [accessionNumber, rawFileName = ""] = hit._id.split(":");
-  const fileName = source.xsl && rawFileName.toUpperCase().endsWith(".XML") ? `${source.xsl}/${rawFileName}` : rawFileName;
+  const fileName =
+    source.xsl && rawFileName.toUpperCase().endsWith(".XML") ? `${source.xsl}/${rawFileName}` : rawFileName;
   const cik = formatArchiveCik(source.ciks[0] ?? "");
   const accessionNumberNoDashes = formatAccessionDirectory(source.adsh || accessionNumber || "");
   const filingDirectoryUrl = createUrl(secBaseUrl, `/Archives/edgar/data/${cik}/${accessionNumberNoDashes}`);

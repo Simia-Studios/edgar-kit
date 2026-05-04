@@ -19,7 +19,9 @@ export class TickersClient {
   ) {}
 
   rawCompanyTickers(): Effect.Effect<SECCompanyTickersResponse, SECClientError> {
-    return this.http.requestJson<SECCompanyTickersResponse>(createUrl(this.baseUrls.sec, "/files/company_tickers.json"));
+    return this.http.requestJson<SECCompanyTickersResponse>(
+      createUrl(this.baseUrls.sec, "/files/company_tickers.json"),
+    );
   }
 
   companies(): Effect.Effect<SECCompanyTicker[], SECClientError> {
@@ -43,7 +45,9 @@ export class TickersClient {
 
   mutualFundTickers(): Effect.Effect<SECMutualFundTicker[], SECClientError> {
     return Effect.map(
-      this.http.requestJson<SECMutualFundTickersResponse>(createUrl(this.baseUrls.sec, "/files/company_tickers_mf.json")),
+      this.http.requestJson<SECMutualFundTickersResponse>(
+        createUrl(this.baseUrls.sec, "/files/company_tickers_mf.json"),
+      ),
       (response) =>
         response.data.map(([cik, seriesId, classId, symbol]) => ({
           cik,

@@ -1,5 +1,5 @@
 {
-  "name": "@conorroberts/sec-sdk",
+  "name": "edgar-kit",
   "version": "0.0.1",
   "private": false,
   "description": "Type-safe Effect SDK for SEC EDGAR filings, submissions, search, archives, and XBRL APIs.",
@@ -15,25 +15,29 @@
       "default": "./dist/index.mjs"
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "tsdown --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && tsdown",
     "build:clean": "tsc --noEmit && tsdown --clean",
-    "format": "oxfmt ."
+    "format": "oxfmt .",
+    "check": "oxfmt --check . && pnpm typecheck && pnpm test && pnpm build",
+    "prepare": "lefthook install"
   },
   "dependencies": {
-    "effect": "^3.13.12"
+    "effect": "3.21.2"
   },
   "devDependencies": {
-    "@types/node": "^22.13.10",
-    "oxfmt": "^0.46.0",
-    "tsdown": "^0.21.7",
-    "typescript": "^5.8.3",
-    "vitest": "^3.0.8"
+    "@types/node": "25.6.0",
+    "lefthook": "2.1.6",
+    "oxfmt": "0.47.0",
+    "tsdown": "0.21.10",
+    "typescript": "6.0.3",
+    "vitest": "4.1.5"
   },
-  "publishConfig": {
-    "access": "public"
-  }
+  "packageManager": "pnpm@10.33.2"
 }

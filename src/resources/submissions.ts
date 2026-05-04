@@ -1,5 +1,6 @@
 import { Effect } from "effect";
-import type { SECClientError, SECInputError } from "../errors";
+import { SECInputError } from "../errors";
+import type { SECClientError } from "../errors";
 import type { SECHttpClient } from "../http";
 import type { SECBaseUrls } from "../endpoints";
 import type {
@@ -21,14 +22,16 @@ export class SubmissionsClient {
   ) {}
 
   get(input: GetSubmissionsInput): Effect.Effect<SECSubmission, SECClientError> {
-    return Effect.flatMap(buildUrlEffect(() => this.submissionsUrl(input.cik)), (url) =>
-      this.http.requestJson<SECSubmission>(url),
+    return Effect.flatMap(
+      buildUrlEffect(() => this.submissionsUrl(input.cik)),
+      (url) => this.http.requestJson<SECSubmission>(url),
     );
   }
 
   getFile(input: GetSubmissionFileInput): Effect.Effect<SECSubmissionFile, SECClientError> {
-    return Effect.flatMap(buildUrlEffect(() => createUrl(this.baseUrls.data, `/submissions/${input.fileName}`)), (url) =>
-      this.http.requestJson<SECSubmissionFile>(url),
+    return Effect.flatMap(
+      buildUrlEffect(() => createUrl(this.baseUrls.data, `/submissions/${input.fileName}`)),
+      (url) => this.http.requestJson<SECSubmissionFile>(url),
     );
   }
 
@@ -99,9 +102,7 @@ export const flattenFilings = (
       documentUrl: filingDirectoryUrl && primaryDocument ? createUrl(filingDirectoryUrl, primaryDocument) : undefined,
       filingDirectoryUrl,
       filingIndexUrl:
-        filingDirectoryUrl === undefined
-          ? undefined
-          : createUrl(filingDirectoryUrl, `${accessionNumber}-index.html`),
+        filingDirectoryUrl === undefined ? undefined : createUrl(filingDirectoryUrl, `${accessionNumber}-index.html`),
     };
   });
 };
@@ -140,6 +141,15 @@ const toBoolean = (value: boolean | number | undefined): boolean | undefined => 
 const buildUrlEffect = (build: () => string): Effect.Effect<string, SECInputError> => {
   return Effect.try({
     try: build,
-    catch: (cause) => cause as SECInputError,
+    catch: (cause) => {
+      if (cause instanceof SECInputError) {
+        return cause;
+      }
+
+      return new SECInputError({
+        message: "Unable to build SEC submissions request URL.",
+        input: cause,
+      });
+    },
   });
 };
