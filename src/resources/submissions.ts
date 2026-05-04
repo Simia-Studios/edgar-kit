@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { SECInputError } from "../errors";
+import { describeSECForm, isSECEarningsRelease } from "../types/forms";
 import type { SECClientError } from "../errors";
 import type { SECHttpClient } from "../http";
 import type { SECBaseUrls } from "../endpoints";
@@ -75,6 +76,8 @@ export const flattenFilings = (
   return filings.accessionNumber.map((accessionNumber, index) => {
     const accessionNumberNoDashes = formatAccessionDirectory(accessionNumber);
     const cik = options.cik === undefined ? undefined : String(Number(String(options.cik).replace(/\D/g, "")));
+    const form = filings.form[index];
+    const formDetails = form ? describeSECForm(form) : undefined;
     const primaryDocument = filings.primaryDocument[index];
     const filingDirectoryUrl =
       cik && options.secBaseUrl
@@ -89,7 +92,13 @@ export const flattenFilings = (
       reportDate: filings.reportDate[index],
       acceptanceDateTime: filings.acceptanceDateTime[index],
       act: filings.act[index],
-      form: filings.form[index],
+      form,
+      reportName: formDetails?.reportName,
+      isAmendment: formDetails?.isAmendment,
+      isQuarterlyReport: formDetails?.isQuarterlyReport,
+      isAnnualReport: formDetails?.isAnnualReport,
+      isCurrentReport: formDetails?.isCurrentReport,
+      isEarningsRelease: isSECEarningsRelease(form, filings.items[index]),
       fileNumber: filings.fileNumber[index],
       filmNumber: filings.filmNumber[index],
       items: filings.items[index],

@@ -1,4 +1,4 @@
-import type { CIK, DateInput } from "./common";
+import type { CIK, DateInput, SECQuarter } from "./common";
 import type { SECFormType } from "./forms";
 import type { SECXBRLTaxonomy } from "./xbrl";
 
@@ -7,6 +7,8 @@ export type SECFinancialFrequency = "annual" | "quarterly";
 
 /** High-level statement buckets supported by the financials client. */
 export type SECFinancialStatement = "income" | "balance-sheet" | "cash-flow";
+
+export type SECFinancialFactPeriodType = "duration" | "instant";
 
 /** Normalized financial metric names mapped from common SEC XBRL concepts. */
 export type SECFinancialMetric =
@@ -47,6 +49,35 @@ export interface SECFinancialMetricDefinition {
   concepts: readonly SECFinancialMetricConcept[];
 }
 
+/** Filing metadata for the filing that supplied a normalized financial fact. */
+export interface SECFinancialFilingDetails {
+  cik: number;
+  accessionNumber: string;
+  accessionNumberNoDashes: string;
+  form: SECFormType;
+  reportName: string;
+  filed: string;
+  isAmendment: boolean;
+  isQuarterlyReport: boolean;
+  isAnnualReport: boolean;
+  isCurrentReport: boolean;
+  filingDirectoryUrl: string;
+  filingIndexUrl: string;
+  xbrlZipUrl: string;
+}
+
+/** Fiscal and calendar period metadata for one normalized financial fact. */
+export interface SECFinancialFactPeriod {
+  fiscalYear: number | null;
+  fiscalPeriod: string | null;
+  fiscalQuarter: SECQuarter | null;
+  type: SECFinancialFactPeriodType;
+  startDate?: string;
+  endDate: string;
+  lengthDays?: number;
+  frame?: string;
+}
+
 /** One normalized value from a company filing period. */
 export interface SECFinancialLineItem {
   metric: SECFinancialMetric;
@@ -58,12 +89,18 @@ export interface SECFinancialLineItem {
   value: number | string | null;
   fiscalYear: number | null;
   fiscalPeriod: string | null;
+  fiscalQuarter: SECQuarter | null;
   form: SECFormType;
   filed: string;
   startDate?: string;
   endDate: string;
+  periodType: SECFinancialFactPeriodType;
+  periodLengthDays?: number;
   accessionNumber: string;
+  accessionNumberNoDashes: string;
   frame?: string;
+  filing: SECFinancialFilingDetails;
+  period: SECFinancialFactPeriod;
 }
 
 export type SECFinancialLineItems = Partial<Record<SECFinancialMetric, SECFinancialLineItem>>;
@@ -72,11 +109,14 @@ export type SECFinancialLineItems = Partial<Record<SECFinancialMetric, SECFinanc
 export interface SECFinancialPeriod {
   fiscalYear: number | null;
   fiscalPeriod: string | null;
+  fiscalQuarter: SECQuarter | null;
   form: SECFormType;
   filed: string;
   startDate?: string;
   endDate: string;
   accessionNumber: string;
+  accessionNumberNoDashes: string;
+  filing: SECFinancialFilingDetails;
   values: SECFinancialLineItems;
 }
 

@@ -31,6 +31,7 @@ import { SECClient } from "edgar-kit";
 
 const sec = new SECClient({
   userAgent: "Acme Corp data@example.com",
+  maxRps: 10,
 });
 
 const annualIncome = await sec.financials.statement({
@@ -48,7 +49,9 @@ const revenue = await sec.financials.metric({
 });
 ```
 
-High-level methods return promises and reject with `SECClientError` subclasses when inputs or requests fail.
+High-level methods return promises and reject with `SECClientError` subclasses when inputs or requests fail. Effect-based resource methods are run through the client boundary, for example `await sec.run(sec.tickers.companies())`.
+
+`maxRps` defaults to `10` to match SEC fair access guidance. Set a different number to change the client-side request rate, or set `maxRps: null` to disable the SDK rate limiter entirely.
 
 ## Company Financials
 
@@ -76,6 +79,10 @@ const operatingCashFlow = await sec.financials.metric({
 ```
 
 Supported statements are `income`, `balance-sheet`, and `cash-flow`. Supported metrics include revenue, gross profit, operating income, net income, EPS, shares, assets, liabilities, equity, cash, debt, operating cash flow, capital expenditures, dividends paid, and common shares outstanding.
+
+The SEC quarterly report is `Form 10-Q` (`10-Q/A` for amendments and `10-QT` for transition periods). Quarterly earnings releases are commonly filed as `Form 8-K` reports with Item `2.02`; `SECFiling` and `SECSearchFiling` expose `isEarningsRelease` for that case.
+
+Quarterly financial outputs include filing and period provenance on each line item, including `fiscalQuarter`, `periodType`, `periodLengthDays`, `accessionNumberNoDashes`, `filing.reportName`, filing URLs, and the source XBRL `frame`. When a 10-Q includes both quarter-to-date and year-to-date facts for the same quarter, the SDK prefers the true quarterly fact.
 
 ## Share Prices
 
@@ -122,4 +129,11 @@ const companyFactsUrl = sec.xbrl.companyFactsUrl({
 
 ## Errors
 
-Requests fail with `SECRequestError`. Invalid inputs such as malformed CIKs fail with `SECInputError`. Provider adapters fail with `SECProviderError`.
+| Error              | When it happens                                                                                                                                                                  | Useful fields                                                               |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `SECInputError`    | The SDK cannot build a valid request from the provided input, such as a malformed CIK, invalid date, unknown financial metric, missing ticker/CIK, or an impossible query range. | `message`, `input`                                                          |
+| `SECRequestError`  | An SEC HTTP request fails, returns a non-2xx response, or fails before a response is received.                                                                                   | `message`, `url`, `method`, `status`, `statusText`, `responseBody`, `cause` |
+| `SECProviderError` | A configured external provider fails, currently used for `sharePriceProvider` failures.                                                                                          | `message`, `provider`, `cause`                                              |
+| `TypeError`        | `SECClient` is initialized without a non-empty `userAgent`. This is thrown synchronously by the constructor before any request is made.                                          | `message`                                                                   |
+
+Use `isSECClientError(error)` to narrow errors thrown from SDK operations to the exported `SECClientError` union: `SECInputError`, `SECRequestError`, or `SECProviderError`.

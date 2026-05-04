@@ -4,7 +4,8 @@ import { SECRequestError } from "./errors";
 export interface SECHttpClientOptions {
   userAgent: string;
   fetch?: typeof globalThis.fetch;
-  maxRequestsPerSecond?: number;
+  maxRps?: number | null;
+  maxRequestsPerSecond?: number | null;
   headers?: HeadersInit;
 }
 
@@ -17,7 +18,7 @@ export class SECHttpClient {
   readonly fetch: typeof globalThis.fetch;
 
   private readonly headers: HeadersInit;
-  private readonly requestIntervalMs: number;
+  private readonly requestIntervalMs: number | null;
   private rateLimitQueue: Promise<void> = Promise.resolve();
   private lastRequestAt = 0;
 
@@ -29,7 +30,8 @@ export class SECHttpClient {
     this.userAgent = options.userAgent;
     this.fetch = options.fetch ?? globalThis.fetch;
     this.headers = options.headers ?? {};
-    this.requestIntervalMs = 1_000 / Math.max(1, options.maxRequestsPerSecond ?? 10);
+    const maxRps = options.maxRps === undefined ? (options.maxRequestsPerSecond ?? 10) : options.maxRps;
+    this.requestIntervalMs = maxRps === null ? null : 1_000 / Math.max(Number.EPSILON, maxRps);
   }
 
   requestJson<T>(url: string, options: SECRequestOptions = {}): Effect.Effect<T, SECRequestError> {
@@ -106,9 +108,14 @@ export class SECHttpClient {
   }
 
   private acquireRequestSlot(): Promise<void> {
+    if (this.requestIntervalMs === null) {
+      return Promise.resolve();
+    }
+
+    const requestIntervalMs = this.requestIntervalMs;
     const nextSlot = this.rateLimitQueue.then(async () => {
       const now = Date.now();
-      const waitMs = Math.max(0, this.lastRequestAt + this.requestIntervalMs - now);
+      const waitMs = Math.max(0, this.lastRequestAt + requestIntervalMs - now);
 
       if (waitMs > 0) {
         await new Promise((resolve) => setTimeout(resolve, waitMs));

@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import { SECInputError } from "../errors";
-import { SEC_FILING_CATEGORY_FORMS } from "../types/forms";
+import { SEC_FILING_CATEGORY_FORMS, describeSECForm, isSECEarningsRelease } from "../types/forms";
 import type { SECClientError } from "../errors";
 import type { SECBaseUrls } from "../endpoints";
 import type { SECHttpClient } from "../http";
@@ -69,18 +69,36 @@ export const searchHitToFiling = (hit: SECSearchHit, secBaseUrl = "https://www.s
   const accessionNumberNoDashes = formatAccessionDirectory(source.adsh || accessionNumber || "");
   const filingDirectoryUrl = createUrl(secBaseUrl, `/Archives/edgar/data/${cik}/${accessionNumberNoDashes}`);
   const documentUrl = createUrl(filingDirectoryUrl, fileName);
+  const formDetails = describeSECForm(source.form);
 
   return {
     id: hit._id,
+    score: hit._score,
     accessionNumber: source.adsh,
     accessionNumberNoDashes,
     cik,
     form: source.form,
+    reportName: formDetails.reportName,
+    isAmendment: formDetails.isAmendment,
+    isQuarterlyReport: formDetails.isQuarterlyReport,
+    isAnnualReport: formDetails.isAnnualReport,
+    isCurrentReport: formDetails.isCurrentReport,
+    isEarningsRelease: isSECEarningsRelease(source.form, source.items),
     filedAt: source.file_date,
     reportDate: source.period_ending,
     fileName,
     fileType: source.file_type,
     fileDescription: source.file_description,
+    fileNumbers: source.file_num,
+    filmNumbers: source.film_num,
+    items: source.items,
+    rootForms: source.root_forms,
+    sequence: source.sequence,
+    sics: source.sics,
+    businessStates: source.biz_states,
+    businessLocations: source.biz_locations,
+    incorporationStates: source.inc_states,
+    schemaVersion: source.schema_version,
     entities: source.display_names,
     documentUrl,
     filingDirectoryUrl,

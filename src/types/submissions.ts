@@ -20,7 +20,7 @@ export interface SECRecentFilings {
   reportDate: string[];
   acceptanceDateTime: string[];
   act: string[];
-  form: string[];
+  form: SECFormType[];
   fileNumber: string[];
   filmNumber: string[];
   items: string[];
@@ -74,7 +74,13 @@ export interface SECFiling {
   reportDate?: string;
   acceptanceDateTime?: string;
   act?: string;
-  form?: string;
+  form?: SECFormType;
+  reportName?: string;
+  isAmendment?: boolean;
+  isQuarterlyReport?: boolean;
+  isAnnualReport?: boolean;
+  isCurrentReport?: boolean;
+  isEarningsRelease?: boolean;
   fileNumber?: string;
   filmNumber?: string;
   items?: string;

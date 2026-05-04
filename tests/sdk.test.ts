@@ -4,6 +4,7 @@ import {
   flattenFilings,
   formatAccessionDirectory,
   formatCik,
+  isSECEarningsRelease,
   parseMasterIndex,
   searchHitToFiling,
 } from "../src";
@@ -70,6 +71,11 @@ describe("SEC SDK formatting and URLs", () => {
 });
 
 describe("SEC response helpers", () => {
+  it("identifies 8-K Item 2.02 earnings releases", () => {
+    expect(isSECEarningsRelease("8-K", "2.02,9.01")).toBe(true);
+    expect(isSECEarningsRelease("10-Q", "")).toBe(false);
+  });
+
   it("flattens SEC columnar recent filings into usable filing records", () => {
     const recent: SECRecentFilings = {
       accessionNumber: ["0000320193-26-000013"],
@@ -98,6 +104,12 @@ describe("SEC response helpers", () => {
         acceptanceDateTime: "2026-05-01T18:01:00.000Z",
         act: "34",
         form: "10-Q",
+        reportName: "Quarterly Report on Form 10-Q",
+        isAmendment: false,
+        isQuarterlyReport: true,
+        isAnnualReport: false,
+        isCurrentReport: false,
+        isEarningsRelease: false,
         fileNumber: "001-36743",
         filmNumber: "26123456",
         items: "",
@@ -147,6 +159,11 @@ describe("SEC response helpers", () => {
       accessionNumberNoDashes: "000032019325000079",
       cik: "320193",
       form: "10-K",
+      reportName: "Annual Report on Form 10-K",
+      isAnnualReport: true,
+      isQuarterlyReport: false,
+      score: 8.1,
+      fileNumbers: ["001-36743"],
       fileName: "aapl-20250927.htm",
       documentUrl: "https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/aapl-20250927.htm",
     });
@@ -214,7 +231,7 @@ describe("SECClient HTTP integration", () => {
     const client = new SECClient({
       userAgent: "Acme Corp data@example.com",
       fetch: fetchMock,
-      maxRequestsPerSecond: 10,
+      maxRps: 10,
     });
 
     expect(client.http.fetch).toBe(fetchMock);
@@ -227,6 +244,31 @@ describe("SECClient HTTP integration", () => {
       },
     ]);
     expect(headersSeen).toEqual(["Acme Corp data@example.com", "gzip, deflate"]);
+  });
+
+  it("accepts maxRps null to disable request throttling", async () => {
+    let requestCount = 0;
+    const fetchMock: typeof fetch = async () => {
+      requestCount += 1;
+
+      return jsonResponse({
+        0: {
+          cik_str: 320193,
+          ticker: "AAPL",
+          title: "Apple Inc.",
+        },
+      });
+    };
+
+    const client = new SECClient({
+      userAgent: "Acme Corp data@example.com",
+      fetch: fetchMock,
+      maxRps: null,
+    });
+
+    await Promise.all([client.run(client.tickers.companies()), client.run(client.tickers.companies())]);
+
+    expect(requestCount).toBe(2);
   });
 });
 
@@ -251,6 +293,27 @@ describe("High-level company data", () => {
                 form: "10-K",
                 filed: "2025-10-31",
                 frame: "CY2025",
+              },
+              {
+                start: "2026-01-01",
+                end: "2026-06-30",
+                val: 240_000_000_000,
+                accn: "0000320193-26-000042",
+                fy: 2026,
+                fp: "Q2",
+                form: "10-Q",
+                filed: "2026-07-31",
+              },
+              {
+                start: "2026-04-01",
+                end: "2026-06-30",
+                val: 120_000_000_000,
+                accn: "0000320193-26-000042",
+                fy: 2026,
+                fp: "Q2",
+                form: "10-Q",
+                filed: "2026-07-31",
+                frame: "CY2026Q2",
               },
             ],
           },
@@ -318,7 +381,7 @@ describe("High-level company data", () => {
     const client = new SECClient({
       userAgent: "Acme Corp data@example.com",
       fetch: fetchMock,
-      maxRequestsPerSecond: 10,
+      maxRps: 10,
     });
 
     const financials = await client.financials.statement({
@@ -337,6 +400,48 @@ describe("High-level company data", () => {
     expect(financials.periods[0]?.values.revenue?.value).toBe(391_035_000_000);
     expect(financials.periods[0]?.values.netIncome?.value).toBe(93_736_000_000);
     expect(financials.periods[0]?.values.assets).toBeUndefined();
+  });
+
+  it("keeps useful quarterly report details and prefers quarter-duration facts over YTD values", async () => {
+    const client = new SECClient({
+      userAgent: "Acme Corp data@example.com",
+      fetch: fetchMock,
+      maxRps: 10,
+    });
+
+    const [revenue] = await client.financials.metric({
+      ticker: "AAPL",
+      metric: "revenue",
+      frequency: "quarterly",
+      limit: 1,
+    });
+
+    expect(revenue).toMatchObject({
+      value: 120_000_000_000,
+      fiscalYear: 2026,
+      fiscalPeriod: "Q2",
+      fiscalQuarter: 2,
+      periodType: "duration",
+      periodLengthDays: 91,
+      startDate: "2026-04-01",
+      endDate: "2026-06-30",
+      accessionNumber: "0000320193-26-000042",
+      accessionNumberNoDashes: "000032019326000042",
+      frame: "CY2026Q2",
+      filing: {
+        reportName: "Quarterly Report on Form 10-Q",
+        isQuarterlyReport: true,
+        filingDirectoryUrl: "https://www.sec.gov/Archives/edgar/data/320193/000032019326000042",
+        filingIndexUrl:
+          "https://www.sec.gov/Archives/edgar/data/320193/000032019326000042/0000320193-26-000042-index.html",
+        xbrlZipUrl: "https://www.sec.gov/Archives/edgar/data/320193/000032019326000042/0000320193-26-000042-xbrl.zip",
+      },
+      period: {
+        fiscalQuarter: 2,
+        frame: "CY2026Q2",
+        lengthDays: 91,
+      },
+    });
   });
 
   it("resolves CIKs to tickers before calling a plain share price provider", async () => {
@@ -361,7 +466,7 @@ describe("High-level company data", () => {
     const client = new SECClient({
       userAgent: "Acme Corp data@example.com",
       fetch: fetchMock,
-      maxRequestsPerSecond: 10,
+      maxRps: 10,
       sharePriceProvider,
     });
 

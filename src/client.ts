@@ -18,6 +18,11 @@ export interface SECClientOptions extends SECHttpClientOptions {
   /** Override SEC endpoint bases for testing or controlled environments. */
   baseUrls?: Partial<SECBaseUrls>;
   /**
+   * Client-side request rate limit. Defaults to 10 requests per second.
+   * Set to `null` to disable the SDK rate limiter.
+   */
+  maxRps?: number | null;
+  /**
    * Market-data adapter used by `sharePrices`.
    *
    * @example
@@ -62,7 +67,7 @@ export class SECClient {
     this.tickers = new TickersClient(this.http, this.baseUrls);
     this.xbrl = new XBRLClient(this.http, this.baseUrls);
     this.companies = new CompaniesClient(this.tickers, this.submissions);
-    this.financials = new FinancialsClient(this.xbrl, this.tickers);
+    this.financials = new FinancialsClient(this.xbrl, this.tickers, this.baseUrls.sec);
     this.sharePrices = new SharePricesClient(this.tickers, options.sharePriceProvider);
   }
 

@@ -6,6 +6,9 @@ import type {
   GetFinancialMetricInput,
   GetFinancialStatementInput,
   SECCompanyFinancials,
+  SECFinancialFactPeriod,
+  SECFinancialFactPeriodType,
+  SECFinancialFilingDetails,
   SECFinancialFrequency,
   SECFinancialLineItem,
   SECFinancialMetric,
@@ -14,13 +17,23 @@ import type {
   SECFinancialsQuery,
   SECFinancialStatement,
 } from "../types/financials";
+import { describeSECForm } from "../types/forms";
+import type { SECQuarter } from "../types/common";
 import type { SECCompanyFacts, SECXBRLFact } from "../types/xbrl";
-import { formatSECDate, normalizeCik, normalizeList } from "../utils/format";
+import {
+  createUrl,
+  formatAccessionDirectory,
+  formatArchiveCik,
+  formatSECDate,
+  normalizeCik,
+  normalizeList,
+} from "../utils/format";
 import type { TickersClient } from "./tickers";
 import type { XBRLClient } from "./xbrl";
 
 interface RankedFinancialLineItem extends SECFinancialLineItem {
-  rank: number;
+  conceptRank: number;
+  periodRank: number;
 }
 
 /** Built-in mappings from normalized metric names to SEC XBRL concepts. */
@@ -333,6 +346,7 @@ export class FinancialsClient {
   constructor(
     private readonly xbrl: XBRLClient,
     private readonly tickers: TickersClient,
+    private readonly secBaseUrl = "https://www.sec.gov",
   ) {}
 
   /**
@@ -388,7 +402,7 @@ export class FinancialsClient {
       const facts = yield* this.xbrl.companyFacts({ cik });
 
       return yield* Effect.try({
-        try: () => buildCompanyFinancials(facts, input),
+        try: () => buildCompanyFinancials(facts, input, this.secBaseUrl),
         catch: toFinancialsInputError,
       });
     });
@@ -442,6 +456,7 @@ export class FinancialsClient {
 export const buildCompanyFinancials = (
   facts: SECCompanyFacts,
   query: SECFinancialsQuery = {},
+  secBaseUrl = "https://www.sec.gov",
 ): SECCompanyFinancials => {
   const frequency = query.frequency ?? "annual";
   const startDate = query.startDate ? formatSECDate(query.startDate) : undefined;
@@ -470,6 +485,8 @@ export const buildCompanyFinancials = (
             continue;
           }
 
+          const filing = financialFilingDetails(facts.cik, fact, secBaseUrl);
+          const period = financialFactPeriod(fact);
           const lineItem: RankedFinancialLineItem = {
             metric: definition.metric,
             statement: definition.statement,
@@ -480,13 +497,20 @@ export const buildCompanyFinancials = (
             value: fact.val,
             fiscalYear: fact.fy,
             fiscalPeriod: fact.fp,
+            fiscalQuarter: period.fiscalQuarter,
             form: fact.form,
             filed: fact.filed,
             startDate: fact.start,
             endDate: fact.end,
+            periodType: period.type,
+            periodLengthDays: period.lengthDays,
             accessionNumber: fact.accn,
+            accessionNumberNoDashes: filing.accessionNumberNoDashes,
             frame: fact.frame,
-            rank: conceptIndex * 100 + unitIndex,
+            filing,
+            period,
+            conceptRank: conceptIndex * 100 + unitIndex,
+            periodRank: financialFactPeriodRank(fact, frequency),
           };
 
           const key = lineItemKey(lineItem);
@@ -511,11 +535,14 @@ export const buildCompanyFinancials = (
         result.push({
           fiscalYear: lineItem.fiscalYear,
           fiscalPeriod: lineItem.fiscalPeriod,
+          fiscalQuarter: lineItem.fiscalQuarter,
           form: lineItem.form,
           filed: lineItem.filed,
           startDate: lineItem.startDate,
           endDate: lineItem.endDate,
           accessionNumber: lineItem.accessionNumber,
+          accessionNumberNoDashes: lineItem.accessionNumberNoDashes,
+          filing: lineItem.filing,
           values: {
             [lineItem.metric]: lineItem,
           },
@@ -530,6 +557,8 @@ export const buildCompanyFinancials = (
         period.filed = lineItem.filed;
         period.startDate = lineItem.startDate;
         period.accessionNumber = lineItem.accessionNumber;
+        period.accessionNumberNoDashes = lineItem.accessionNumberNoDashes;
+        period.filing = lineItem.filing;
       }
 
       return result;
@@ -625,6 +654,101 @@ const matchesFinancialFact = (
   );
 };
 
+const financialFilingDetails = (cik: number, fact: SECXBRLFact, secBaseUrl: string): SECFinancialFilingDetails => {
+  const formDetails = describeSECForm(fact.form);
+  const accessionNumberNoDashes = formatAccessionDirectory(fact.accn);
+  const filingDirectoryUrl = createUrl(
+    secBaseUrl,
+    `/Archives/edgar/data/${formatArchiveCik(cik)}/${accessionNumberNoDashes}`,
+  );
+
+  return {
+    cik,
+    accessionNumber: fact.accn,
+    accessionNumberNoDashes,
+    form: formDetails.form,
+    reportName: formDetails.reportName,
+    filed: fact.filed,
+    isAmendment: formDetails.isAmendment,
+    isQuarterlyReport: formDetails.isQuarterlyReport,
+    isAnnualReport: formDetails.isAnnualReport,
+    isCurrentReport: formDetails.isCurrentReport,
+    filingDirectoryUrl,
+    filingIndexUrl: createUrl(filingDirectoryUrl, `${fact.accn}-index.html`),
+    xbrlZipUrl: createUrl(filingDirectoryUrl, `${fact.accn}-xbrl.zip`),
+  };
+};
+
+const financialFactPeriod = (fact: SECXBRLFact): SECFinancialFactPeriod => {
+  const lengthDays = financialFactLengthDays(fact);
+
+  return {
+    fiscalYear: fact.fy,
+    fiscalPeriod: fact.fp,
+    fiscalQuarter: fiscalQuarter(fact.fp),
+    type: financialFactPeriodType(fact),
+    startDate: fact.start,
+    endDate: fact.end,
+    lengthDays,
+    frame: fact.frame,
+  };
+};
+
+const financialFactPeriodType = (fact: SECXBRLFact): SECFinancialFactPeriodType => {
+  return fact.start ? "duration" : "instant";
+};
+
+const financialFactLengthDays = (fact: SECXBRLFact): number | undefined => {
+  if (!fact.start) {
+    return undefined;
+  }
+
+  const start = Date.parse(`${fact.start}T00:00:00Z`);
+  const end = Date.parse(`${fact.end}T00:00:00Z`);
+
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+    return undefined;
+  }
+
+  return Math.round((end - start) / 86_400_000) + 1;
+};
+
+const financialFactPeriodRank = (fact: SECXBRLFact, frequency: SECFinancialFrequency): number => {
+  if (!fact.start) {
+    return 0;
+  }
+
+  const lengthDays = financialFactLengthDays(fact);
+
+  if (lengthDays === undefined) {
+    return 3;
+  }
+
+  if (frequency === "annual") {
+    return lengthDays >= 300 && lengthDays <= 400 ? 0 : 1;
+  }
+
+  if (fact.frame && /^CY\d{4}Q[1-4]$/.test(fact.frame)) {
+    return 0;
+  }
+
+  if (lengthDays >= 70 && lengthDays <= 110) {
+    return 1;
+  }
+
+  if (lengthDays <= 120) {
+    return 2;
+  }
+
+  return 3;
+};
+
+const fiscalQuarter = (fiscalPeriod: string | null | undefined): SECQuarter | null => {
+  const match = fiscalPeriod?.toUpperCase().match(/^Q([1-4])$/);
+
+  return match ? (Number(match[1]) as SECQuarter) : null;
+};
+
 const lineItemKey = (lineItem: SECFinancialLineItem): string => {
   return [lineItem.metric, lineItem.fiscalYear ?? "", lineItem.fiscalPeriod ?? "", lineItem.endDate].join("|");
 };
@@ -638,8 +762,12 @@ const shouldReplaceLineItem = (candidate: RankedFinancialLineItem, existing: Ran
     return candidate.filed > existing.filed;
   }
 
-  if (candidate.rank !== existing.rank) {
-    return candidate.rank < existing.rank;
+  if (candidate.periodRank !== existing.periodRank) {
+    return candidate.periodRank < existing.periodRank;
+  }
+
+  if (candidate.conceptRank !== existing.conceptRank) {
+    return candidate.conceptRank < existing.conceptRank;
   }
 
   return candidate.accessionNumber > existing.accessionNumber;
@@ -665,7 +793,7 @@ const comparePeriods = (
 };
 
 const stripRank = (lineItem: RankedFinancialLineItem): SECFinancialLineItem => {
-  const { rank: _rank, ...item } = lineItem;
+  const { conceptRank: _conceptRank, periodRank: _periodRank, ...item } = lineItem;
   return item;
 };
 

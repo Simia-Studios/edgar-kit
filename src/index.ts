@@ -19,15 +19,27 @@ export { XBRLClient } from "./resources/xbrl";
 export { SECInputError, SECProviderError, SECRequestError, isSECClientError } from "./errors";
 export type { SECClientError } from "./errors";
 
-export { SEC_FILING_CATEGORY_FORMS } from "./types/forms";
+export {
+  SEC_ANNUAL_REPORT_FORMS,
+  SEC_CURRENT_REPORT_FORMS,
+  SEC_EARNINGS_RELEASE_ITEM,
+  SEC_FILING_CATEGORY_FORMS,
+  SEC_QUARTERLY_REPORT_FORMS,
+  describeSECForm,
+  isSECEarningsRelease,
+} from "./types/forms";
 export type {
+  SECAnnualReportForm,
   KnownSECFormType,
   SECAnnualQuarterlyCurrentReportForm,
   SECBeneficialOwnershipForm,
+  SECCurrentReportForm,
+  SECFormDetails,
   SECFilingCategory,
   SECFormType,
   SECOwnershipForm,
   SECProxyForm,
+  SECQuarterlyReportForm,
   SECRegistrationStatementForm,
   SECReviewOrOrderForm,
   SECTenderOfferForm,
@@ -86,6 +98,9 @@ export type {
   GetFinancialMetricInput,
   GetFinancialStatementInput,
   SECCompanyFinancials,
+  SECFinancialFactPeriod,
+  SECFinancialFactPeriodType,
+  SECFinancialFilingDetails,
   SECFinancialFrequency,
   SECFinancialLineItem,
   SECFinancialLineItems,

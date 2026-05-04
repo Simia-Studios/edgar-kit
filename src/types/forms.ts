@@ -38,6 +38,12 @@ export type SECAnnualQuarterlyCurrentReportForm =
   | "N-Q"
   | "SD";
 
+export type SECQuarterlyReportForm = "10-Q" | "10-Q/A" | "10-QT";
+
+export type SECAnnualReportForm = "10-K" | "10-K/A" | "10-KT" | "20-F" | "20-F/A" | "40-F" | "40-F/A";
+
+export type SECCurrentReportForm = "8-K" | "8-K/A" | "8-K12G3" | "8-K15D5";
+
 export type SECRegistrationStatementForm =
   | "10-12B"
   | "10-12G"
@@ -158,6 +164,58 @@ export type KnownSECFormType =
   | "T-3";
 
 export type SECFormType = KnownSECFormType | (string & {});
+
+export interface SECFormDetails {
+  form: SECFormType;
+  reportName: string;
+  isAmendment: boolean;
+  isQuarterlyReport: boolean;
+  isAnnualReport: boolean;
+  isCurrentReport: boolean;
+}
+
+export const SEC_QUARTERLY_REPORT_FORMS: readonly SECQuarterlyReportForm[] = ["10-Q", "10-Q/A", "10-QT"];
+
+export const SEC_ANNUAL_REPORT_FORMS: readonly SECAnnualReportForm[] = [
+  "10-K",
+  "10-K/A",
+  "10-KT",
+  "20-F",
+  "20-F/A",
+  "40-F",
+  "40-F/A",
+];
+
+export const SEC_CURRENT_REPORT_FORMS: readonly SECCurrentReportForm[] = ["8-K", "8-K/A", "8-K12G3", "8-K15D5"];
+
+export const SEC_EARNINGS_RELEASE_ITEM = "2.02";
+
+export const describeSECForm = (form: SECFormType): SECFormDetails => {
+  const normalizedForm = normalizeForm(form);
+  const reportName = SEC_FORM_REPORT_NAMES[normalizedForm] ?? `Form ${normalizedForm}`;
+
+  return {
+    form: normalizedForm,
+    reportName,
+    isAmendment: normalizedForm.endsWith("/A"),
+    isQuarterlyReport: isFormInList(normalizedForm, SEC_QUARTERLY_REPORT_FORMS),
+    isAnnualReport: isFormInList(normalizedForm, SEC_ANNUAL_REPORT_FORMS),
+    isCurrentReport: isFormInList(normalizedForm, SEC_CURRENT_REPORT_FORMS),
+  };
+};
+
+export const isSECEarningsRelease = (
+  form: SECFormType | undefined,
+  items: string | readonly string[] | undefined,
+): boolean => {
+  if (!form || !isFormInList(normalizeForm(form), SEC_CURRENT_REPORT_FORMS)) {
+    return false;
+  }
+
+  const itemList = typeof items === "string" ? items.split(",") : items;
+
+  return itemList?.some((item: string) => item.trim() === SEC_EARNINGS_RELEASE_ITEM) ?? false;
+};
 
 export type SECFilingCategory =
   | "all"
@@ -377,4 +435,29 @@ export const SEC_FILING_CATEGORY_FORMS: Record<Exclude<SECFilingCategory, "all" 
     "SC14D1F",
   ],
   "trust-indentures": ["305B2", "T-3"],
+};
+
+const SEC_FORM_REPORT_NAMES: Partial<Record<string, string>> = {
+  "10-Q": "Quarterly Report on Form 10-Q",
+  "10-Q/A": "Amended Quarterly Report on Form 10-Q/A",
+  "10-QT": "Transition Quarterly Report on Form 10-QT",
+  "10-K": "Annual Report on Form 10-K",
+  "10-K/A": "Amended Annual Report on Form 10-K/A",
+  "10-KT": "Transition Annual Report on Form 10-KT",
+  "20-F": "Annual Report on Form 20-F",
+  "20-F/A": "Amended Annual Report on Form 20-F/A",
+  "40-F": "Annual Report on Form 40-F",
+  "40-F/A": "Amended Annual Report on Form 40-F/A",
+  "8-K": "Current Report on Form 8-K",
+  "8-K/A": "Amended Current Report on Form 8-K/A",
+  "8-K12G3": "Current Report on Form 8-K12G3",
+  "8-K15D5": "Current Report on Form 8-K15D5",
+};
+
+const normalizeForm = (form: SECFormType): SECFormType => {
+  return form.trim().toUpperCase() as SECFormType;
+};
+
+const isFormInList = <T extends SECFormType>(form: SECFormType, forms: readonly T[]): form is T => {
+  return forms.includes(form as T);
 };
