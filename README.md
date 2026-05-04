@@ -98,6 +98,10 @@ const prices = await secWithPrices.sharePrices.history({
   endDate: "2025-12-31",
   interval: "daily",
 });
+
+const latestShopify = await secWithPrices.sharePrices.latest({
+  ticker: "SHOP",
+});
 ```
 
 ## Low-Level URLs

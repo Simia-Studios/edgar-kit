@@ -15,10 +15,25 @@ import { XBRLClient } from "./resources/xbrl";
 import type { SECSharePriceProvider } from "./types/share-prices";
 
 export interface SECClientOptions extends SECHttpClientOptions {
+  /** Override SEC endpoint bases for testing or controlled environments. */
   baseUrls?: Partial<SECBaseUrls>;
+  /**
+   * Market-data adapter used by `sharePrices`.
+   *
+   * @example
+   * ```ts
+   * const sec = new SECClient({
+   *   userAgent: "Acme Corp data@example.com",
+   *   sharePriceProvider: {
+   *     historicalPrices: async ({ ticker }) => fetchPrices(ticker),
+   *   },
+   * });
+   * ```
+   */
   sharePriceProvider?: SECSharePriceProvider;
 }
 
+/** Main SDK entry point. */
 export class SECClient {
   readonly http: SECHttpClient;
   readonly baseUrls: SECBaseUrls;

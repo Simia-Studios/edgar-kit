@@ -351,6 +351,7 @@ describe("High-level company data", () => {
             high: 242,
             low: 238,
             close: 241,
+            timestamp: "2025-01-02T16:00:00-05:00",
             adjustedClose: 241,
             volume: 42_000_000,
           },
@@ -377,6 +378,7 @@ describe("High-level company data", () => {
         high: 242,
         low: 238,
         close: 241,
+        timestamp: "2025-01-02T16:00:00-05:00",
         adjustedClose: 241,
         volume: 42_000_000,
       },
@@ -387,6 +389,11 @@ describe("High-level company data", () => {
       startDate: "2025-01-01",
       endDate: "2025-01-31",
       interval: "daily",
+    });
+
+    await expect(client.sharePrices.latest({ ticker: "SHOP" })).resolves.toMatchObject({
+      close: 241,
+      timestamp: "2025-01-02T16:00:00-05:00",
     });
   });
 });

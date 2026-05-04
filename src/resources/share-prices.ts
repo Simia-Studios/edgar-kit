@@ -3,6 +3,7 @@ import { SECInputError, SECProviderError } from "../errors";
 import type { SECClientError } from "../errors";
 import type {
   GetHistoricalSharePricesInput,
+  GetLatestSharePriceInput,
   ResolvedHistoricalSharePricesInput,
   SECSharePriceBar,
   SECSharePriceProvider,
@@ -16,8 +17,41 @@ export class SharePricesClient {
     private readonly provider?: SECSharePriceProvider,
   ) {}
 
+  /**
+   * Get normalized historical price bars from the configured provider.
+   *
+   * @example
+   * ```ts
+   * const prices = await sec.sharePrices.history({
+   *   ticker: "SHOP",
+   *   startDate: "2025-01-01",
+   *   endDate: "2025-12-31",
+   * });
+   * ```
+   */
   history(input: GetHistoricalSharePricesInput): Promise<SECSharePriceBar[]> {
     return Effect.runPromise(this.historyEffect(input));
+  }
+
+  /**
+   * Get the latest available price bar from the configured provider.
+   *
+   * @example
+   * ```ts
+   * const latest = await sec.sharePrices.latest({ ticker: "SHOP" });
+   * console.log(latest?.close, latest?.timestamp);
+   * ```
+   */
+  latest(input: GetLatestSharePriceInput): Promise<SECSharePriceBar | undefined> {
+    return Effect.runPromise(
+      Effect.map(
+        this.historyEffect({
+          ...input,
+          interval: "daily",
+        }),
+        latestSharePriceBar,
+      ),
+    );
   }
 
   private historyEffect(input: GetHistoricalSharePricesInput): Effect.Effect<SECSharePriceBar[], SECClientError> {
@@ -115,6 +149,14 @@ const normalizeCikEffect = (cik: GetHistoricalSharePricesInput["cik"]): Effect.E
     try: () => Number(normalizeCik(cik ?? "")),
     catch: toSharePriceInputError,
   });
+};
+
+const latestSharePriceBar = (bars: readonly SECSharePriceBar[]): SECSharePriceBar | undefined => {
+  return [...bars].sort((a, b) => sharePriceBarTime(b).localeCompare(sharePriceBarTime(a)))[0];
+};
+
+const sharePriceBarTime = (bar: SECSharePriceBar): string => {
+  return bar.timestamp ?? bar.date;
 };
 
 const formatDateEffect = (

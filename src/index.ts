@@ -99,6 +99,7 @@ export type {
 
 export type {
   GetHistoricalSharePricesInput,
+  GetLatestSharePriceInput,
   ResolvedHistoricalSharePricesInput,
   SECSharePriceBar,
   SECSharePriceInterval,

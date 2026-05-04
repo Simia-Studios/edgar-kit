@@ -23,6 +23,7 @@ interface RankedFinancialLineItem extends SECFinancialLineItem {
   rank: number;
 }
 
+/** Built-in mappings from normalized metric names to SEC XBRL concepts. */
 export const SEC_FINANCIAL_METRIC_DEFINITIONS = {
   revenue: {
     metric: "revenue",
@@ -186,11 +187,6 @@ export const SEC_FINANCIAL_METRIC_DEFINITIONS = {
         tag: "Liabilities",
         units: ["USD"],
       },
-      {
-        taxonomy: "us-gaap",
-        tag: "LiabilitiesAndStockholdersEquity",
-        units: ["USD"],
-      },
     ],
   },
   currentLiabilities: {
@@ -339,14 +335,49 @@ export class FinancialsClient {
     private readonly tickers: TickersClient,
   ) {}
 
+  /**
+   * Get normalized company financial periods from SEC XBRL company facts.
+   *
+   * @example
+   * ```ts
+   * const financials = await sec.financials.company({
+   *   ticker: "AAPL",
+   *   frequency: "annual",
+   *   limit: 5,
+   * });
+   * ```
+   */
   company(input: GetCompanyFinancialsInput): Promise<SECCompanyFinancials> {
     return Effect.runPromise(this.companyEffect(input));
   }
 
+  /**
+   * Get one normalized statement for a company.
+   *
+   * @example
+   * ```ts
+   * const balanceSheet = await sec.financials.statement({
+   *   cik: 320193,
+   *   statement: "balance-sheet",
+   * });
+   * ```
+   */
   statement(input: GetFinancialStatementInput): Promise<SECCompanyFinancials> {
     return Effect.runPromise(this.statementEffect(input));
   }
 
+  /**
+   * Get one normalized metric over time.
+   *
+   * @example
+   * ```ts
+   * const revenue = await sec.financials.metric({
+   *   ticker: "AAPL",
+   *   metric: "revenue",
+   *   frequency: "quarterly",
+   * });
+   * ```
+   */
   metric(input: GetFinancialMetricInput): Promise<SECFinancialLineItem[]> {
     return Effect.runPromise(this.metricEffect(input));
   }
@@ -407,6 +438,7 @@ export class FinancialsClient {
   }
 }
 
+/** Build normalized financial periods from a raw SEC companyfacts response. */
 export const buildCompanyFinancials = (
   facts: SECCompanyFacts,
   query: SECFinancialsQuery = {},
@@ -512,6 +544,7 @@ export const buildCompanyFinancials = (
   };
 };
 
+/** List normalized metrics included in a supported statement. */
 export const metricsForStatement = (statement: SECFinancialStatement): SECFinancialMetric[] => {
   return allMetricDefinitions()
     .filter((definition) => definition.statement === statement)
