@@ -1,8 +1,8 @@
 # edgar-kit
 
-Type-safe Effect SDK for SEC EDGAR filings APIs.
+Type-safe SDK for SEC EDGAR filings APIs.
 
-The SDK covers the SEC JSON data APIs, EDGAR full text search endpoint, archive filing retrieval, index files, and ticker reference files. It requires a `User-Agent`, sends gzip/deflate headers, and defaults to the SEC fair access limit of 10 requests/second.
+The SDK covers the SEC JSON data APIs, EDGAR full text search endpoint, archive filing retrieval, index files, ticker reference files, and high-level company financial abstractions. It requires a `User-Agent`, sends gzip/deflate headers, and defaults to the SEC fair access limit of 10 requests/second.
 
 Sources used for endpoint behavior:
 
@@ -33,154 +33,89 @@ const sec = new SECClient({
   userAgent: "Acme Corp data@example.com",
 });
 
-const apple = await sec.run(sec.companies.byTicker("AAPL"));
+const annualIncome = await sec.financials.statement({
+  ticker: "AAPL",
+  statement: "income",
+  frequency: "annual",
+  limit: 5,
+});
 
-const recent10Ks = await sec.run(
-  sec.companies.filingsByTicker({
-    ticker: "AAPL",
-    forms: "10-K",
-    startDate: "2020-01-01",
-    limit: 5,
-  }),
-);
-```
-
-All network methods return `Effect.Effect<Success, SECClientError>`. Use `client.run(...)` for promise-based code, or compose the Effects directly in an Effect application.
-
-## Operations
-
-```ts
-const sec = new SECClient({
-  userAgent: "Your App your.email@example.com",
-  maxRequestsPerSecond: 10,
+const revenue = await sec.financials.metric({
+  ticker: "AAPL",
+  metric: "revenue",
+  frequency: "quarterly",
+  limit: 8,
 });
 ```
 
-Tickers and company lookup:
+High-level methods return promises and reject with `SECClientError` subclasses when inputs or requests fail.
+
+## Company Financials
+
+Use `financials.company` when you want all supported statement metrics, `financials.statement` when you want one statement, and `financials.metric` when you want one normalized line item over time.
 
 ```ts
-await sec.run(sec.tickers.companies());
-await sec.run(sec.tickers.companyTickersWithExchanges());
-await sec.run(sec.tickers.mutualFundTickers());
-await sec.run(sec.companies.byTicker("MSFT"));
+const annualFinancials = await sec.financials.company({
+  ticker: "MSFT",
+  frequency: "annual",
+  limit: 3,
+});
+
+const balanceSheet = await sec.financials.statement({
+  cik: 320193,
+  statement: "balance-sheet",
+  frequency: "annual",
+  limit: 4,
+});
+
+const operatingCashFlow = await sec.financials.metric({
+  ticker: "AAPL",
+  metric: "operatingCashFlow",
+  frequency: "annual",
+});
 ```
 
-Submissions and filing lists:
+Supported statements are `income`, `balance-sheet`, and `cash-flow`. Supported metrics include revenue, gross profit, operating income, net income, EPS, shares, assets, liabilities, equity, cash, debt, operating cash flow, capital expenditures, dividends paid, and common shares outstanding.
+
+## Share Prices
+
+SEC EDGAR does not provide historical market prices. Configure a `sharePriceProvider` to connect your market-data source while keeping the SDK call shape normalized around SEC tickers and CIKs.
 
 ```ts
-await sec.run(sec.submissions.get({ cik: 320193 }));
-await sec.run(
-  sec.submissions.listFilings({
-    cik: "0000320193",
-    forms: ["10-K", "10-Q", "8-K"],
-    startDate: "2024-01-01",
-    endDate: "2026-12-31",
-    includeAdditionalFiles: true,
-  }),
-);
+const secWithPrices = new SECClient({
+  userAgent: "Your App your.email@example.com",
+  sharePriceProvider: {
+    historicalPrices: async ({ ticker, startDate, endDate, interval }) => {
+      // Call your market-data provider here and return normalized OHLCV bars.
+      return [];
+    },
+  },
+});
+
+const prices = await secWithPrices.sharePrices.history({
+  ticker: "AAPL",
+  startDate: "2025-01-01",
+  endDate: "2025-12-31",
+  interval: "daily",
+});
 ```
 
-Full text filing search:
+## Low-Level URLs
+
+URL helpers are available when you need direct SEC endpoint URLs:
 
 ```ts
-await sec.run(
-  sec.search.filingResults({
-    query: '"artificial intelligence"',
-    forms: ["10-K", "10-Q"],
-    startDate: "2025-01-01",
-    endDate: "2025-12-31",
-    locationType: "located",
-    locationCode: "CA",
-    page: 1,
-  }),
-);
-```
+const filingUrl = sec.archives.filingDocumentUrl({
+  cik: 320193,
+  accessionNumber: "0000320193-26-000013",
+  fileName: "aapl-20260328.htm",
+});
 
-Filing documents and archive metadata:
-
-```ts
-await sec.run(
-  sec.archives.filingDirectory({
-    cik: 320193,
-    accessionNumber: "0000320193-26-000013",
-  }),
-);
-
-const html = await sec.run(
-  sec.archives.filingDocument({
-    cik: 320193,
-    accessionNumber: "0000320193-26-000013",
-    fileName: "aapl-20260328.htm",
-  }),
-);
-```
-
-XBRL data:
-
-```ts
-await sec.run(
-  sec.xbrl.companyFacts({
-    cik: 320193,
-  }),
-);
-
-await sec.run(
-  sec.xbrl.companyConcept({
-    cik: 320193,
-    taxonomy: "us-gaap",
-    tag: "AccountsPayableCurrent",
-  }),
-);
-
-await sec.run(
-  sec.xbrl.frame({
-    taxonomy: "us-gaap",
-    tag: "AccountsPayableCurrent",
-    unit: "USD",
-    period: { year: 2025, quarter: 1, instant: true },
-  }),
-);
-```
-
-Index files:
-
-```ts
-await sec.run(
-  sec.indexes.masterIndex({
-    directory: "full",
-    year: 2025,
-    quarter: 1,
-  }),
-);
+const companyFactsUrl = sec.xbrl.companyFactsUrl({
+  cik: 320193,
+});
 ```
 
 ## Errors
 
-Requests fail with `SECRequestError`. Invalid inputs such as malformed CIKs fail with `SECInputError`.
-
-```ts
-import { Effect } from "effect";
-
-const program = sec.search
-  .filingResults({ query: "climate", forms: "10-K" })
-  .pipe(Effect.catchTag("SECRequestError", (error) => Effect.succeed([])));
-```
-
-## Development
-
-All direct package versions are exact. `.npmrc` sets `save-exact=true` for future dependency changes.
-
-```sh
-pnpm install
-pnpm test
-pnpm build
-pnpm check
-```
-
-Publish with an explicit semver bump:
-
-```sh
-./publish.sh patch
-./publish.sh minor
-./publish.sh major
-```
+Requests fail with `SECRequestError`. Invalid inputs such as malformed CIKs fail with `SECInputError`. Provider adapters fail with `SECProviderError`.

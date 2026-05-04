@@ -3,13 +3,20 @@ export type { SECClientOptions } from "./client";
 
 export { ArchivesClient } from "./resources/archives";
 export { CompaniesClient } from "./resources/companies";
+export {
+  FinancialsClient,
+  SEC_FINANCIAL_METRIC_DEFINITIONS,
+  buildCompanyFinancials,
+  metricsForStatement,
+} from "./resources/financials";
 export { IndexesClient } from "./resources/indexes";
 export { SearchClient } from "./resources/search";
+export { SharePricesClient } from "./resources/share-prices";
 export { SubmissionsClient } from "./resources/submissions";
 export { TickersClient } from "./resources/tickers";
 export { XBRLClient } from "./resources/xbrl";
 
-export { SECInputError, SECRequestError, isSECClientError } from "./errors";
+export { SECInputError, SECProviderError, SECRequestError, isSECClientError } from "./errors";
 export type { SECClientError } from "./errors";
 
 export { SEC_FILING_CATEGORY_FORMS } from "./types/forms";
@@ -73,6 +80,30 @@ export type {
   SECXBRLTaxonomy,
   SECXBRLUnit,
 } from "./types/xbrl";
+
+export type {
+  GetCompanyFinancialsInput,
+  GetFinancialMetricInput,
+  GetFinancialStatementInput,
+  SECCompanyFinancials,
+  SECFinancialFrequency,
+  SECFinancialLineItem,
+  SECFinancialLineItems,
+  SECFinancialMetric,
+  SECFinancialMetricConcept,
+  SECFinancialMetricDefinition,
+  SECFinancialPeriod,
+  SECFinancialStatement,
+  SECFinancialsQuery,
+} from "./types/financials";
+
+export type {
+  GetHistoricalSharePricesInput,
+  ResolvedHistoricalSharePricesInput,
+  SECSharePriceBar,
+  SECSharePriceInterval,
+  SECSharePriceProvider,
+} from "./types/share-prices";
 
 export type {
   SECSearchFiling,

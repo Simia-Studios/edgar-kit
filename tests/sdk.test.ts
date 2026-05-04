@@ -7,6 +7,7 @@ import {
   parseMasterIndex,
   searchHitToFiling,
 } from "../src";
+import type { SECCompanyFacts, SECSharePriceProvider } from "../src";
 import type { SECRecentFilings } from "../src";
 import type { SECSearchHit } from "../src";
 
@@ -228,3 +229,172 @@ describe("SECClient HTTP integration", () => {
     expect(headersSeen).toEqual(["Acme Corp data@example.com", "gzip, deflate"]);
   });
 });
+
+describe("High-level company data", () => {
+  const companyFacts: SECCompanyFacts = {
+    cik: 320193,
+    entityName: "Apple Inc.",
+    facts: {
+      "us-gaap": {
+        RevenueFromContractWithCustomerExcludingAssessedTax: {
+          label: "Revenue",
+          description: "Revenue",
+          units: {
+            USD: [
+              {
+                start: "2024-09-29",
+                end: "2025-09-27",
+                val: 391_035_000_000,
+                accn: "0000320193-25-000079",
+                fy: 2025,
+                fp: "FY",
+                form: "10-K",
+                filed: "2025-10-31",
+                frame: "CY2025",
+              },
+            ],
+          },
+        },
+        NetIncomeLoss: {
+          label: "Net income",
+          description: "Net income",
+          units: {
+            USD: [
+              {
+                start: "2024-09-29",
+                end: "2025-09-27",
+                val: 93_736_000_000,
+                accn: "0000320193-25-000079",
+                fy: 2025,
+                fp: "FY",
+                form: "10-K",
+                filed: "2025-10-31",
+              },
+            ],
+          },
+        },
+        Assets: {
+          label: "Assets",
+          description: "Assets",
+          units: {
+            USD: [
+              {
+                end: "2025-09-27",
+                val: 359_241_000_000,
+                accn: "0000320193-25-000079",
+                fy: 2025,
+                fp: "FY",
+                form: "10-K",
+                filed: "2025-10-31",
+              },
+            ],
+          },
+        },
+      },
+    },
+  };
+
+  const fetchMock: typeof fetch = async (input) => {
+    const url = String(input);
+
+    if (url.endsWith("/files/company_tickers.json")) {
+      return jsonResponse({
+        0: {
+          cik_str: 320193,
+          ticker: "AAPL",
+          title: "Apple Inc.",
+        },
+      });
+    }
+
+    if (url.endsWith("/api/xbrl/companyfacts/CIK0000320193.json")) {
+      return jsonResponse(companyFacts);
+    }
+
+    return new Response("not found", { status: 404, statusText: "Not Found" });
+  };
+
+  it("returns normalized financial statements without exposing Effect to callers", async () => {
+    const client = new SECClient({
+      userAgent: "Acme Corp data@example.com",
+      fetch: fetchMock,
+      maxRequestsPerSecond: 10,
+    });
+
+    const financials = await client.financials.statement({
+      ticker: "AAPL",
+      statement: "income",
+      frequency: "annual",
+      limit: 1,
+    });
+
+    expect(financials).toMatchObject({
+      cik: 320193,
+      entityName: "Apple Inc.",
+      frequency: "annual",
+    });
+    expect(financials.periods).toHaveLength(1);
+    expect(financials.periods[0]?.values.revenue?.value).toBe(391_035_000_000);
+    expect(financials.periods[0]?.values.netIncome?.value).toBe(93_736_000_000);
+    expect(financials.periods[0]?.values.assets).toBeUndefined();
+  });
+
+  it("resolves CIKs to tickers before calling a plain share price provider", async () => {
+    let providerInput: unknown;
+    const sharePriceProvider: SECSharePriceProvider = {
+      historicalPrices: (input) => {
+        providerInput = input;
+        return [
+          {
+            date: "2025-01-02",
+            open: 240,
+            high: 242,
+            low: 238,
+            close: 241,
+            adjustedClose: 241,
+            volume: 42_000_000,
+          },
+        ];
+      },
+    };
+    const client = new SECClient({
+      userAgent: "Acme Corp data@example.com",
+      fetch: fetchMock,
+      maxRequestsPerSecond: 10,
+      sharePriceProvider,
+    });
+
+    await expect(
+      client.sharePrices.history({
+        cik: 320193,
+        startDate: "2025-01-01",
+        endDate: "2025-01-31",
+      }),
+    ).resolves.toEqual([
+      {
+        date: "2025-01-02",
+        open: 240,
+        high: 242,
+        low: 238,
+        close: 241,
+        adjustedClose: 241,
+        volume: 42_000_000,
+      },
+    ]);
+    expect(providerInput).toEqual({
+      ticker: "AAPL",
+      cik: 320193,
+      startDate: "2025-01-01",
+      endDate: "2025-01-31",
+      interval: "daily",
+    });
+  });
+});
+
+const jsonResponse = (body: unknown): Response => {
+  return new Response(JSON.stringify(body), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+};

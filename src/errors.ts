@@ -15,8 +15,14 @@ export class SECRequestError extends Data.TaggedError("SECRequestError")<{
   readonly cause?: unknown;
 }> {}
 
-export type SECClientError = SECInputError | SECRequestError;
+export class SECProviderError extends Data.TaggedError("SECProviderError")<{
+  readonly message: string;
+  readonly provider: string;
+  readonly cause?: unknown;
+}> {}
+
+export type SECClientError = SECInputError | SECRequestError | SECProviderError;
 
 export const isSECClientError = (error: unknown): error is SECClientError => {
-  return error instanceof SECInputError || error instanceof SECRequestError;
+  return error instanceof SECInputError || error instanceof SECRequestError || error instanceof SECProviderError;
 };

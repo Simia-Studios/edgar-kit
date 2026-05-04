@@ -1,8 +1,8 @@
 {
   "name": "edgar-kit",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": false,
-  "description": "Type-safe Effect SDK for SEC EDGAR filings, submissions, search, archives, and XBRL APIs.",
+  "description": "Type-safe SDK for SEC EDGAR filings, submissions, search, archives, XBRL, financials, and company data.",
   "license": "ISC",
   "files": [
     "dist/**",
@@ -24,6 +24,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && tsdown",
     "build:clean": "tsc --noEmit && tsdown --clean",
+    "release": "./publish.sh",
     "format": "oxfmt .",
     "check": "oxfmt --check . && pnpm typecheck && pnpm test && pnpm build",
     "prepare": "lefthook install"
