@@ -8,7 +8,15 @@ Sources used for endpoint behavior:
 
 - SEC EDGAR APIs: https://www.sec.gov/edgar/sec-api-documentation
 - SEC developer and fair access guidance: https://www.sec.gov/developer
+- SEC developer resources and EDGAR access rules: https://www.sec.gov/about/developer-resources
 - EDGAR full text search app/API behavior: https://www.sec.gov/edgar/search/
+
+## SEC EDGAR Compliance
+
+Use of this SDK must comply with the SEC's EDGAR access rules and developer guidance:
+https://www.sec.gov/about/developer-resources.
+
+The SEC asks automated clients to download only what they need, use efficient scripts, moderate request volume, and stay within the current fair access guideline of no more than 10 requests per second across all machines used by the same user. `edgar-kit` requires a caller-provided `User-Agent` so SEC requests identify your application and contact information; the package does not provide a default identity for you.
 
 ## Install
 
