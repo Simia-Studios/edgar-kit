@@ -1,0 +1,39 @@
+{
+  "name": "@conorroberts/sec-sdk",
+  "version": "0.0.1",
+  "private": false,
+  "description": "Type-safe Effect SDK for SEC EDGAR filings, submissions, search, archives, and XBRL APIs.",
+  "license": "ISC",
+  "files": [
+    "dist/**",
+    "README.md"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && tsdown",
+    "build:clean": "tsc --noEmit && tsdown --clean",
+    "format": "oxfmt ."
+  },
+  "dependencies": {
+    "effect": "^3.13.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "oxfmt": "^0.46.0",
+    "tsdown": "^0.21.7",
+    "typescript": "^5.8.3",
+    "vitest": "^3.0.8"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
